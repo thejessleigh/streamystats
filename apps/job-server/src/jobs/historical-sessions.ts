@@ -32,6 +32,7 @@ interface ProcessingStats {
   activitiesProcessed: number;
   sessionsCreated: number;
   sessionsSkipped: number;
+  sessionsSkippedTooShort: number;
   duplicatesFound: number;
   errors: number;
   errorDetails: Array<{
@@ -58,6 +59,7 @@ export async function processHistoricalSessionsJob(job: any) {
     activitiesProcessed: 0,
     sessionsCreated: 0,
     sessionsSkipped: 0,
+    sessionsSkippedTooShort: 0,
     duplicatesFound: 0,
     errors: 0,
     errorDetails: [],
@@ -97,7 +99,7 @@ export async function processHistoricalSessionsJob(job: any) {
       console.log(`[Historical Sessions] Processing batch ${Math.floor(offset / batchSize) + 1}: ${activities.length} activities (offset: ${offset})`);
 
       // Group activities by user and item to reconstruct sessions
-      const sessionGroups = await groupActivitiesIntoSessions(activities);
+      const sessionGroups = await groupActivitiesIntoSessions(activities, stats);
       
       // Process each session group
       console.log(`[Historical Sessions] Found ${sessionGroups.length} session groups in this batch`);
@@ -360,7 +362,8 @@ async function getPlaybackActivities(
  * Group activities into logical sessions based on user, item, and timing
  */
 async function groupActivitiesIntoSessions(
-  activities: any[]
+  activities: any[],
+  stats: ProcessingStats
 ): Promise<HistoricalSessionData[]> {
   const sessions: HistoricalSessionData[] = [];
   const sessionMap = new Map<string, any[]>();
@@ -382,7 +385,7 @@ async function groupActivitiesIntoSessions(
   // Process each session group
   for (const [sessionKey, sessionActivities] of sessionMap) {
     try {
-      const sessionData = await reconstructSession(sessionActivities);
+      const sessionData = await reconstructSession(sessionActivities, stats);
       if (sessionData) {
         sessions.push(sessionData);
       }
@@ -405,7 +408,8 @@ async function groupActivitiesIntoSessions(
  * We need to piece together these events to understand the full viewing experience.
  */
 async function reconstructSession(
-  activities: any[]
+  activities: any[],
+  stats: ProcessingStats
 ): Promise<HistoricalSessionData | null> {
   // Skip empty activity groups (shouldn't happen, but safety check)
   if (activities.length === 0) return null;
@@ -465,8 +469,19 @@ async function reconstructSession(
   
   // Estimate actual playback duration
   // We assume 80% of the time difference was actual viewing (accounting for pauses, buffering, etc.)
-  // Set minimum of 1 minute to avoid zero-duration sessions from rapid start/stop events
-  const estimatedPlayDuration = Math.max(60, Math.floor(timeDiff * 0.8));
+  const estimatedPlayDuration = Math.floor(timeDiff * 0.8);
+
+  // Apply minimum duration filters based on media type
+  // Audio sessions: minimum 10 seconds
+  // Video sessions: minimum 60 seconds  
+  const isAudioContent = item.mediaType === 'Audio' || item.type === 'Audio';
+  const minDuration = isAudioContent ? 10 : 60;
+  
+  if (estimatedPlayDuration < minDuration) {
+    console.debug(`[Historical Sessions] Session too short: ${estimatedPlayDuration}s < ${minDuration}s minimum for ${isAudioContent ? 'audio' : 'video'} content "${item.name}", skipping`);
+    stats.sessionsSkippedTooShort++;
+    return null;
+  }
 
   // Determine if the user completed watching the item
   // Look for activity names that indicate completion ("stopped", "completed", etc.)
