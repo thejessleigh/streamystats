@@ -63,6 +63,31 @@ export function formatDuration(
   return parts.join(" ") || "0m";
 }
 
+export function formatDurationHMS(
+  totalSeconds: number,
+  unit: "seconds" | "minutes" | "hours" = "seconds"
+): string {
+  if (totalSeconds === 0) return "00:00:00";
+
+  // Convert to seconds based on input unit
+  let seconds = totalSeconds;
+  switch (unit) {
+    case "minutes":
+      seconds *= 60;
+      break;
+    case "hours":
+      seconds *= 3600;
+      break;
+  }
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  // Format as HH:mm:ss
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 export const isTaskRunning = (
   data?: SyncTask[] | null,
   type?: SyncTask["sync_type"] | null
