@@ -32,8 +32,12 @@ WORKDIR /app
 # Create minimal package.json for migration dependencies
 RUN echo '{"name":"migrate","version":"1.0.0"}' > package.json
 
-# Install only the necessary packages for migrations
-RUN npm install drizzle-kit@0.31.1 drizzle-orm@0.43.1 postgres@^3.4.3 dotenv@^16.3.1
+# Install packages one by one to minimize memory usage
+RUN npm config set maxsockets 1 && \
+    npm install --no-audit --no-fund drizzle-kit@0.31.1 && \
+    npm install --no-audit --no-fund drizzle-orm@0.43.1 && \
+    npm install --no-audit --no-fund postgres@^3.4.3 && \
+    npm install --no-audit --no-fund dotenv@^16.3.1
 
 # Copy migration files and config
 COPY --from=builder /app/packages/database/drizzle ./packages/database/drizzle

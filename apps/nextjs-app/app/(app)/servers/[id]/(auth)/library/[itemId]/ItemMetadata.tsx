@@ -200,6 +200,20 @@ export function ItemMetadata({ item, statistics }: ItemMetadataProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-3">
+            {item.runtimeTicks && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Duration:
+                </span>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {formatDuration(Math.round((item.runtimeTicks / 10000) / 1000))}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {item.container && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">

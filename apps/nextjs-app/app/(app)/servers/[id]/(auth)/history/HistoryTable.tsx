@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useQueryParams } from "@/hooks/useQueryParams";
 import { usePersistantState } from "@/hooks/usePersistantState";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatDurationHMS } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "nextjs-toploader/app";
 import { useDebounce } from "use-debounce";
@@ -239,7 +239,7 @@ export function HistoryTable({
           </div>
           <div className="flex flex-col">
             <div className="capitalize font-medium transition-colors duration-200 group-hover:text-primary">
-              {row.getValue("item_name")}
+              {row.original.item?.name || row.original.session.itemName || "Unknown Item"}
             </div>
             {row.original.item?.seriesName && (
               <div className="text-sm text-neutral-500 transition-colors duration-200 group-hover:text-primary/80">
@@ -315,24 +315,6 @@ export function HistoryTable({
       ),
     },
     {
-      accessorKey: "remote_end_point",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => handleSortChange("remote_end_point")}
-          >
-            IP Address
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
-      cell: ({ row }) => {
-        const ip = row.original.session.remoteEndPoint;
-        return <div className="font-medium">{ip || "-"}</div>;
-      },
-    },
-    {
       accessorKey: "client_name",
       header: ({ column }) => {
         return (
@@ -366,6 +348,28 @@ export function HistoryTable({
       cell: ({ row }) => {
         const device = row.original.session.deviceName;
         return <div className="font-medium">{device || "-"}</div>;
+      },
+    },
+    {
+      accessorKey: "session.playDuration",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => handleSortChange("play_duration")}
+          >
+            Duration
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const duration = row.original.session.playDuration;
+        return (
+          <div className="font-medium font-mono">
+            {duration ? formatDurationHMS(duration) : "-"}
+          </div>
+        );
       },
     },
     {
